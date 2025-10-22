@@ -1,0 +1,277 @@
+[
+  {
+    "scene": 1,
+    "internal_objects": [
+      {
+        "Bridge": [
+          "cable-stayed bridge",
+          "suspension bridge",
+          "arch bridge",
+          "concrete bridge",
+          "steel bridge",
+          "pedestrian bridge",
+          "vehicle bridge",
+          "bridge structure",
+          "bridge deck",
+          "bridge towers",
+          "bridge cables",
+          "bridge supports",
+          "modern bridge",
+          "urban bridge"
+        ]
+      },
+      {
+        "Water": [
+          "river",
+          "canal",
+          "stream",
+          "lake",
+          "water surface",
+          "reflections on water"
+        ]
+      },
+      {
+        "Cityscape": [
+          "buildings",
+          "skyscrapers",
+          "urban area",
+          "city lights",
+          "roads",
+          "vehicles",
+          "infrastructure",
+          "city skyline",
+          "high-rise buildings"
+        ]
+      },
+      {
+        "Sky": [
+          "clouds",
+          "blue sky",
+          "sunset sky",
+          "sunrise sky",
+          "clear sky",
+          "overcast sky"
+        ]
+      },
+      {
+        "Drone": [
+          "flycam",
+          "drone footage",
+          "aerial view",
+          "high angle shot",
+          "bird's eye view"
+        ]
+      }
+    ],
+    "context": [
+      "Aerial view of a bridge in a major city",
+      " urban infrastructure",
+      " transportation",
+      " city development",
+      " tourism",
+      " architectural marvel",
+      " city overview",
+      " modern city"
+    ],
+    "keywords": [
+      "flycam",
+      " drone",
+      " aerial",
+      " bridge",
+      " Ho Chi Minh City",
+      " HCMC",
+      " Saigon",
+      " urban",
+      " infrastructure",
+      " river",
+      " city",
+      " architecture",
+      " transportation",
+      " Vietnam",
+      " cityscape",
+      " modern",
+      " development"
+    ]
+  },
+  {
+    "scene": 2,
+    "internal_objects": [
+      {
+        "Building": [
+          "skyscraper",
+          "high-rise building",
+          "office building",
+          "commercial building",
+          "Bitexco Financial Tower",
+          "helipad",
+          "glass facade",
+          "architectural design",
+          "modern architecture",
+          "iconic building",
+          "landmark building",
+          "observation deck"
+        ]
+      },
+      {
+        "Cityscape": [
+          "surrounding buildings",
+          "urban environment",
+          "streets",
+          "vehicles",
+          "city lights",
+          "other infrastructure",
+          "city skyline",
+          "urban landscape"
+        ]
+      },
+      {
+        "Sky": [
+          "clouds",
+          "blue sky",
+          "sunset sky",
+          "sunrise sky",
+          "clear sky",
+          "overcast sky"
+        ]
+      },
+      {
+        "Drone": [
+          "flycam",
+          "drone footage",
+          "aerial view",
+          "high angle shot",
+          "bird's eye view"
+        ]
+      }
+    ],
+    "context": [
+      "Iconic landmark in a major city",
+      " modern architecture",
+      " financial district",
+      " urban landscape",
+      " tourism",
+      " city development",
+      " business hub",
+      " city overview"
+    ],
+    "keywords": [
+      "Bitexco",
+      " Bitexco Financial Tower",
+      " skyscraper",
+      " high-rise",
+      " Ho Chi Minh City",
+      " HCMC",
+      " Saigon",
+      " urban",
+      " architecture",
+      " landmark",
+      " city",
+      " modern",
+      " Vietnam",
+      " helipad",
+      " glass",
+      " financial",
+      " iconic"
+    ]
+  },
+  {
+    "scene": 3,
+    "internal_objects": [
+      {
+        "Lake": [
+          "Hoan Kiem Lake",
+          "Ho Guom",
+          "water body",
+          "lake surface",
+          "reflections on water",
+          "serene lake"
+        ]
+      },
+      {
+        "Pagoda/Temple": [
+          "Turtle Tower",
+          "Thap Rua",
+          "Ngoc Son Temple",
+          "The Huc Bridge",
+          "temple architecture",
+          "traditional architecture",
+          "historical structure",
+          "cultural landmark"
+        ]
+      },
+      {
+        "Trees/Vegetation": [
+          "trees",
+          "foliage",
+          "greenery",
+          "park",
+          "lakeside",
+          "plants",
+          "natural elements"
+        ]
+      },
+      {
+        "People": [
+          "pedestrians",
+          "tourists",
+          "locals",
+          "visitors",
+          "people walking",
+          "people relaxing"
+        ]
+      },
+      {
+        "Cityscape": [
+          "surrounding buildings",
+          "urban environment",
+          "streets",
+          "vehicles",
+          "city lights",
+          "traditional buildings",
+          "modern buildings"
+        ]
+      },
+      {
+        "Sky": [
+          "clouds",
+          "blue sky",
+          "sunset sky",
+          "sunrise sky",
+          "clear sky",
+          "overcast sky"
+        ]
+      }
+    ],
+    "context": [
+      "Iconic landmark in the capital city",
+      " cultural heritage",
+      " historical site",
+      " tourism",
+      " urban park",
+      " traditional architecture",
+      " serene environment",
+      " public space",
+      " leisure area"
+    ],
+    "keywords": [
+      "Hoan Kiem Lake",
+      " Ho Guom",
+      " Hanoi",
+      " lake",
+      " Turtle Tower",
+      " Thap Rua",
+      " Ngoc Son Temple",
+      " The Huc Bridge",
+      " cultural",
+      " historical",
+      " landmark",
+      " park",
+      " urban",
+      " Vietnam",
+      " traditional",
+      " tourism",
+      " heritage",
+      " serene"
+    ]
+  }
+]
