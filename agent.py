@@ -8,6 +8,9 @@ from langgraph.types import interrupt, Command
 import requests
 import json
 import re
+from dotenv import load_dotenv
+load_dotenv()
+import os
 
 llm = ChatGoogleGenerativeAI(
     model="gemini-2.5-flash",
@@ -15,7 +18,7 @@ llm = ChatGoogleGenerativeAI(
     max_tokens=None,
     timeout=None,
     max_retries=2,
-    google_api_key="AIzaSyC3FNtIO_binwPV2gN2heIkuVsOJmcKPJg"
+    google_api_key=os.getenv('GOOGLE_API_KEY')
 )
 
 class Query(TypedDict):
@@ -123,7 +126,7 @@ def search_query(state) -> Command[Literal["approve_result"]]:
             "model": "pe",
             "isTranslate": True
         }
-        res = requests.post("https://nhan6104--search-dev.modal.run", data = json.dumps(body), headers={"Content-Type": "application/json"})
+        res = requests.post(f"https://{os.getenv('MODAL_ENPOINT')}--search-dev.modal.run", data = json.dumps(body), headers={"Content-Type": "application/json"})
 
     elif num_of_scene > 1:
         body = {
@@ -136,7 +139,7 @@ def search_query(state) -> Command[Literal["approve_result"]]:
             "model": "pe"
 
         }
-        res = requests.post("https://nhan6104--searchtask3-dev.modal.run", data = json.dumps(body), headers={"Content-Type": "application/json"})
+        res = requests.post(f"https://{os.getenv('MODAL_ENPOINT')}--searchtask3-dev.modal.run", data = json.dumps(body), headers={"Content-Type": "application/json"})
     
     state["result"] = res.json()
     return Command(update=state, goto="approve_result")
