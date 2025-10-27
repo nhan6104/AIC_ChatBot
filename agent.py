@@ -116,7 +116,7 @@ def search_query(state) -> Command[Literal["approve_result"]]:
     enriched_query = state["enriched_query"][-1]
     num_of_scene = enriched_query['number_of_scene']
     queries = enriched_query['queries']
-   
+    result = dict()
     print(num_of_scene, queries)
     if num_of_scene == 1:
         body = {
@@ -127,6 +127,11 @@ def search_query(state) -> Command[Literal["approve_result"]]:
             "isTranslate": True
         }
         res = requests.post(f"https://{os.getenv('MODAL_ENPOINT')}--search-dev.modal.run", data = json.dumps(body), headers={"Content-Type": "application/json"})
+        
+        result['data'] = res.json()
+        result['task_id'] = 1
+        state["result"] = result
+        return Command(update=state, goto="approve_result")
 
     elif num_of_scene > 1:
         body = {
@@ -141,8 +146,11 @@ def search_query(state) -> Command[Literal["approve_result"]]:
         }
         res = requests.post(f"https://{os.getenv('MODAL_ENPOINT')}--searchtask3-dev.modal.run", data = json.dumps(body), headers={"Content-Type": "application/json"})
     
-    state["result"] = res.json()
-    return Command(update=state, goto="approve_result")
+        result['data'] = res.json()
+        result['task_id'] = 3
+        state["result"] = result
+
+        return Command(update=state, goto="approve_result")
 
 
 
