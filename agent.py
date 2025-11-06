@@ -5,6 +5,7 @@ from langgraph.graph.message import add_messages
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import ChatPromptTemplate
 from langgraph.types import interrupt, Command
+from promptTemplate import ENRICH_PROMPT_TEMPLATE, EXTRACT_PROMPT_TEMPLATE, FEWSHOT_PROMPT_TEMPLATE
 import requests
 import json
 import re
@@ -29,17 +30,14 @@ class MessageState(TypedDict):
     original_query: str
     enriched_query: List[Query]
     result: any
+    top_k_task3: List[int]
+    top_k_task3_index: int
+    search_input: Query
+    mode: int
 
 def extract_scene(message):
-    extract_prompt = ChatPromptTemplate.from_messages([
-        (
-            "system",
-            "Extract the number of distinct scenes described in the user's input. Extract and list each scene separately. Follow this template: num_of_scene: X \\n scene_1: [description] \\n scene_2: [description] \\n.... \  Only provide the number and the list of scenes without any additional commentary.",
-        ),
-        ("human", "{query}"),
-    ])
 
-    extract_chain = extract_prompt | llm
+    extract_chain = EXTRACT_PROMPT_TEMPLATE | llm
 
     ai_msg = extract_chain.invoke({
         "query": message
@@ -66,57 +64,12 @@ def extract_scene(message):
     return query
 
 
-def extract_resource(message):
-    enrich_prompt = ChatPromptTemplate.from_messages([
-    (
-        "system",
-        "Base on number of scene from human, please extract exactly number of scene before enrich. Enrich all scenes. Enrich the semantic details emphasizing the objects within each scene to facilitate easier searching by the system. Provide a detailed description for each scene based on the user's input. Following format: Scene:x\nObjects:\[object1:\[list of variety of object1\]\\nobject2:\[list of variety of object2\]\\n....\]\\nContext:\[list of possible contexts\]\\nkeywords:\[list of keysword involve scene\]\n\n... Don't be additional commentary and must follow format, element in list will separate by comma. ",
-    ),
-    ("human", "{query}"),
-    ])
-
-    chain_enrich = enrich_prompt | llm
-    ai_msg_enrich = chain_enrich.invoke({
-        "query": message
-    })
-
-    lst_element_enrich = ai_msg_enrich.content.split("\n\n")
-    scenes = []
-
-    for item in lst_element_enrich:
-        scene_header, rest = item.split("\n", 1)
-        scene_number = int(re.search(r"Scene:(\d+)", scene_header).group(1))
-        objects_match = re.search(r"Objects:\[(.*?)\]\s*Context:", rest, re.DOTALL)
-        context_match = re.search(r"Context:\[(.*?)\]\s*keywords:", rest, re.DOTALL)
-        keywords_match = re.search(r"keywords:\[(.*?)\]", rest, re.DOTALL)
-
-        objects = objects_match.group(1).strip() if objects_match else ""
-        context = context_match.group(1).strip() if context_match else ""
-        keywords = keywords_match.group(1).strip() if keywords_match else ""
-        
-        lst_objects = objects.split('\n')
-        objects = []
-        for obj in lst_objects:
-            key, value = obj.split(':', 1)
-            objects.append({key.strip(): [v.strip() for v in value.strip().strip('[]').split(',')]})
-
-        scenes.append({
-            "scene": int(scene_number),
-            "internal_objects": objects,
-            "context": context.split(','),
-            "keywords": keywords.split(',')
-        })
-
-    with open("enrich_scenes.json", "w", encoding="utf-8") as f:
-        json.dump(scenes, f, ensure_ascii=False, indent=2)
-
-
-
-def search_query(state) -> Command[Literal["approve_result"]]:
-    enriched_query = state["enriched_query"][-1]
-    num_of_scene = enriched_query['number_of_scene']
-    queries = enriched_query['queries']
+def search_query(state) -> Command[Literal["approve_result", "search_query"]]:
+    query = state["search_input"]
+    num_of_scene = query['number_of_scene']
+    queries = query['queries']
     result = dict()
+
     print(num_of_scene, queries)
     if num_of_scene == 1:
         body = {
@@ -131,14 +84,15 @@ def search_query(state) -> Command[Literal["approve_result"]]:
         result['data'] = res.json()
         result['task_id'] = 1
         state["result"] = result
+
         return Command(update=state, goto="approve_result")
 
-    elif num_of_scene > 1:
+    elif num_of_scene > 1:        
         body = {
             "queries": queries,
             "options": 0,
             "isTranslate": True,
-            "top_k": 100,
+            "top_k": state["top_k_task3"][state["top_k_task3_index"]],
             "k_path": 3,
             "ban_window": 1,
             "model": "pe"
@@ -150,61 +104,93 @@ def search_query(state) -> Command[Literal["approve_result"]]:
         result['task_id'] = 3
         state["result"] = result
 
+        if len(result['data']) == 0:
+            if state["top_k_task3_index"] < len(state["top_k_task3"]):
+                state["top_k_task3_index"] += 1
+
+            if state["top_k_task3_index"] == len(state["top_k_task3"]): 
+                state["top_k_task3_index"] = len(state["top_k_task3"]) - 1
+
+            return Command(update=state, goto="search_query")
+
+
         return Command(update=state, goto="approve_result")
 
 
-
+   
 def approve_result(state) -> Command[Literal["accept", "enrich_query"]]:
     approved = interrupt(state["result"])
     print("approve:", approved)  
     return Command(goto="accept" if approved else "enrich_query")
 
 
-def enrich_query(state) -> Command[Literal["search_query"]]:
-    query = state["enriched_query"][-1]
+def enrich_query(state) -> Command[Literal["search_query", "enrich_query"]]:
 
-    old_queries = query['queries']
-    num_of_scene = query['number_of_scene']
-    
-    if num_of_scene > 1:
-        query = state["original_query"]
-    else:
-        query = old_queries[0]
+    if state["mode"] == 1:
+        if state["top_k_task3_index"] < len(state["top_k_task3"]) - 1:
+            state["top_k_task3_index"] += 1
+            return Command(update=state, goto="search_query")
         
-    # with open("enrich_scenes.json", "r", encoding="utf-8") as f:
-    #     enrich_scenes = json.load(f)
+        if state["top_k_task3_index"] == len(state["top_k_task3"]) - 1:
+            state["top_k_task3_index"] = -1  
+            state["mode"] = 2    
+            return Command(update=state, goto="enrich_query")
+        
+    if state["mode"] == 2:
+        original_query = state["original_query"]
+        few_show_chain = FEWSHOT_PROMPT_TEMPLATE | llm
+        ai_msg = few_show_chain.invoke({"query": original_query})
 
-    prompt = ChatPromptTemplate.from_messages([
-        (
-            "system",
-            """You are a semantic enrichment model.
-            Given the following structured scene data, generate semantically rich, 
-            natural language queries that describe the scene from different perspectives or intents.
+        query = Query(number_of_scene=1, queries=[ai_msg.content.strip()])
+        state["enriched_query"].append(query)
 
-            - Some queries should sound like a search intent (e.g., "Find drone footage of...")
-            - Some should sound like visual descriptions (e.g., "A drone shot showing...")
-            - Some should highlight themes or meanings (e.g., "Symbolizing urban development...")
-            - All queries must remain faithful to the scene data.
-            - Queries should add location or context that scene happened.(e.g., "Security camera footage and police bending down to scan happen in airports", "The barred posts in floodplains, ...")
-            - Avoid overly generic queries; be specific to the scene details.
+        state["search_input"] = query
+        state["mode"] = 3
 
-            Respond in English with only sentence. Avoid repeating the same structure. """
-        ),
-        ("human", "{query}"),
-    ])
-
-    enriched_queries = []
-    # for query in old_queries:
-    enrich_chain = prompt | llm
-
-    ai_msg = enrich_chain.invoke({"query": query})
-    enriched_queries.append(ai_msg.content.strip())
-
-
-    query = Query(number_of_scene=1, queries=enriched_queries)
-    state["enriched_query"].append(query)
+        return Command(update=state, goto="search_query")
     
-    return Command(update=state, goto="search_query")
+    if state["mode"] == 3:
+        query = state["enriched_query"][0] # Lấy query gốc đầu tiên để làm giàu
+        old_queries = query['queries']
+        num_of_scene = query['number_of_scene']
+        
+        print(old_queries, num_of_scene)
+
+        if num_of_scene > 1:
+            if state["top_k_task3_index"] == -1:
+                query = " ".join(old_queries)
+
+                enrich_chain = ENRICH_PROMPT_TEMPLATE | llm 
+                ai_msg = enrich_chain.invoke({"query": query})
+                query = extract_scene(ai_msg.content.strip())
+                
+                state["search_input"] = query
+                state["enriched_query"].append(query)
+
+            if state["top_k_task3_index"] < len(state["top_k_task3"]):
+                state["top_k_task3_index"] += 1
+
+
+            if state["top_k_task3_index"] == len(state["top_k_task3"]):
+                state["top_k_task3_index"] = -1
+                return Command(update=state, goto="enrich_query")
+
+
+            return Command(update=state, goto="search_query")
+        
+        else:
+
+            query = old_queries[0]
+            
+            enrich_chain = ENRICH_PROMPT_TEMPLATE | llm 
+            ai_msg = enrich_chain.invoke({"query": query})
+            # enriched_queries.append(ai_msg.content.strip())
+            query = extract_scene(ai_msg.content.strip())
+            
+            state["search_input"] = query
+            state["enriched_query"].append(query)
+        
+            return Command(update=state, goto="search_query")
 
 
 def accept(state):
@@ -234,36 +220,30 @@ class Agent:
 
     def searchQuery(self, query):
         handled_query = extract_scene(query)
-        first_result = self.app.invoke(MessageState(original_query=message, enriched_query = [handled_query]), config={"configurable": {"thread_id": self.thread_id}})
+
+        top_k_task3 = [100, 300, 600, 900, 1024, 2048]
+
+        message_state = MessageState(
+            original_query = query, 
+            search_input = handled_query,
+            enriched_query = [handled_query],
+            top_k_task3 = top_k_task3,
+            top_k_task3_index = 4,
+            mode = 1
+        )
         
-        print(first_result)
+        first_result = self.app.invoke(message_state, config={"configurable": {"thread_id": self.thread_id}})
+        
         data = {
             "thread_id": self.thread_id,
             "data": first_result['result'],
+            "mode": first_result["mode"],
+            "top_k_task3_index": first_result["top_k_task3_index"],
             "message": "Please approve this result"
         }
         return data
     
-        # result_accepted = dict()
-        # result_rejected = dict()
-        # while "__interrupt__" in first_result or  "__interrupt__" in result_rejected:
-            
-        #     if "__interrupt__" in first_result:
-        #         print(first_result["__interrupt__"])
-        #         first_result = dict()
-
-        #     elif "__interrupt__" in result_rejected:
-        #         print(result_rejected["__interrupt__"])
-        #         result_rejected = dict()
-
-        #     message = input("Enter your message: ")
-        #     if message.lower() == "t":
-        #         result_accepted = self.app.invoke(Command(resume=True), config={"configurable": {"thread_id": self.thread_id}})
-        #         break
-
-        #     elif message.lower() == "f": 
-        #         result_rejected = self.app.invoke(Command(resume=False), config={"configurable": {"thread_id": self.thread_id}})
-    
+      
     def approvalTrue(self):
         result_accepted = self.app.invoke(Command(resume=True), config={"configurable": {"thread_id": self.thread_id}})
         self.thread_id += 1
@@ -278,6 +258,8 @@ class Agent:
         result_rejected = self.app.invoke(Command(resume=False), config={"configurable": {"thread_id": self.thread_id}})
         data = {
             "thread_id": self.thread_id,
+            "mode": result_rejected["mode"],
+            "top_k_task3_index": result_rejected["top_k_task3_index"],
             "data": result_rejected['result'],
             "message": "Please approve this result"
 
@@ -286,10 +268,10 @@ class Agent:
     
 
 
-message = """Một cảnh quay từ camera an ninh về một lần khám xét.
-E1: Người cảnh sát vẫy tay đưa nghi phạm vào phòng.
-E2: Sau khi vào phòng, cảnh sát ra hiệu chỉ tay vào vị trí cần đứng. Hãy lấy cảnh đầu tiên chỉ tay được thực hiện
-E2: Khoảnh khắc đầu tiên cảnh sát hoàn toàn khom người xuống để quét kiểm tra"""
+# message = """Một cảnh quay từ camera an ninh về một lần khám xét.
+# E1: Người cảnh sát vẫy tay đưa nghi phạm vào phòng.
+# E2: Sau khi vào phòng, cảnh sát ra hiệu chỉ tay vào vị trí cần đứng. Hãy lấy cảnh đầu tiên chỉ tay được thực hiện
+# E2: Khoảnh khắc đầu tiên cảnh sát hoàn toàn khom người xuống để quét kiểm tra"""
 
 
 

@@ -2,8 +2,22 @@ from fastapi import FastAPI
 from agent import Agent
 from fastapi.responses import JSONResponse
 from fastapi.requests import Request
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
+origins = [
+    "http://localhost:5173",  # Vite dev server
+    "http://127.0.0.1:5173",  # đôi khi chạy bằng 127.0.0.1
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,          # hoặc ["*"] để cho phép tất cả (dev)
+    allow_credentials=True,
+    allow_methods=["*"],            # hoặc ["GET", "POST", "OPTIONS"]
+    allow_headers=["*"],            # hoặc ["Content-Type", "Authorization"]
+) 
+
 agent = Agent()
 
 @app.get("/chatbot/approval")
